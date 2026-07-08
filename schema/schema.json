@@ -1,0 +1,235 @@
+{
+  "bufferBlocks": 10,
+  "schema": {
+    "tables": [
+      {
+        "name": "Student",
+        "rowCount": 1000,
+        "blockCount": 100,
+        "rowsPerBlock": 10,
+        "attributes": [
+          {
+            "name": "indeks",
+            "type": "STRING",
+            "unique": true,
+            "distinctValues": 1000
+          },
+          {
+            "name": "ime",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 800
+          },
+          {
+            "name": "smer",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 5
+          },
+          {
+            "name": "prosek",
+            "type": "DOUBLE",
+            "unique": false,
+            "distinctValues": 300
+          },
+          {
+            "name": "godinaUpisa",
+            "type": "INT",
+            "unique": false,
+            "distinctValues": 10
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_student_indeks_clustered",
+            "attributes": [
+              "indeks"
+            ],
+            "type": "B_PLUS_TREE",
+            "clustered": true,
+            "treeHeight": 3
+          },
+          {
+            "name": "idx_student_smer_prosek",
+            "attributes": [
+              "smer",
+              "prosek"
+            ],
+            "type": "B_PLUS_TREE",
+            "clustered": false,
+            "treeHeight": 3
+          },
+          {
+            "name": "idx_student_ime_hash",
+            "attributes": [
+              "ime"
+            ],
+            "type": "HASH",
+            "clustered": false
+          }
+        ]
+      },
+      {
+        "name": "Ispit",
+        "rowCount": 8000,
+        "blockCount": 800,
+        "rowsPerBlock": 10,
+        "attributes": [
+          {
+            "name": "ispitId",
+            "type": "INT",
+            "unique": true,
+            "distinctValues": 8000
+          },
+          {
+            "name": "studentIndeks",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 1000
+          },
+          {
+            "name": "predmetId",
+            "type": "INT",
+            "unique": false,
+            "distinctValues": 80
+          },
+          {
+            "name": "ocena",
+            "type": "INT",
+            "unique": false,
+            "distinctValues": 6
+          },
+          {
+            "name": "datum",
+            "type": "DATE",
+            "unique": false,
+            "distinctValues": 600
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_ispit_student",
+            "attributes": [
+              "studentIndeks"
+            ],
+            "type": "B_PLUS_TREE",
+            "clustered": false,
+            "treeHeight": 3
+          },
+          {
+            "name": "idx_ispit_predmet_ocena_hash",
+            "attributes": [
+              "predmetId",
+              "ocena"
+            ],
+            "type": "HASH",
+            "clustered": false
+          }
+        ]
+      },
+      {
+        "name": "Predmet",
+        "rowCount": 80,
+        "blockCount": 8,
+        "rowsPerBlock": 10,
+        "attributes": [
+          {
+            "name": "predmetId",
+            "type": "INT",
+            "unique": true,
+            "distinctValues": 80
+          },
+          {
+            "name": "naziv",
+            "type": "STRING",
+            "unique": true,
+            "distinctValues": 80
+          },
+          {
+            "name": "espb",
+            "type": "INT",
+            "unique": false,
+            "distinctValues": 5
+          },
+          {
+            "name": "katedra",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 10
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_predmet_id_clustered",
+            "attributes": [
+              "predmetId"
+            ],
+            "type": "B_PLUS_TREE",
+            "clustered": true,
+            "treeHeight": 2
+          },
+          {
+            "name": "idx_predmet_katedra",
+            "attributes": [
+              "katedra"
+            ],
+            "type": "HASH",
+            "clustered": false
+          }
+        ]
+      },
+      {
+        "name": "Stipendija",
+        "rowCount": 300,
+        "blockCount": 30,
+        "rowsPerBlock": 10,
+        "attributes": [
+          {
+            "name": "stipendijaId",
+            "type": "INT",
+            "unique": true,
+            "distinctValues": 300
+          },
+          {
+            "name": "studentIndeks",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 300
+          },
+          {
+            "name": "tip",
+            "type": "STRING",
+            "unique": false,
+            "distinctValues": 4
+          },
+          {
+            "name": "iznos",
+            "type": "DOUBLE",
+            "unique": false,
+            "distinctValues": 20
+          }
+        ],
+        "indexes": [
+          {
+            "name": "idx_stipendija_student_iznos",
+            "attributes": [
+              "studentIndeks",
+              "iznos"
+            ],
+            "type": "B_PLUS_TREE",
+            "clustered": false,
+            "treeHeight": 3
+          },
+          {
+            "name": "idx_stipendija_tip_hash",
+            "attributes": [
+              "tip"
+            ],
+            "type": "HASH",
+            "clustered": false
+          }
+        ]
+      }
+    ]
+  }
+}
