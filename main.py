@@ -69,7 +69,7 @@ schema = load_schema("schema/schema.json")
 
 student = schema.tables["Student"]
 
-attribute = student.get_attribute("smer")
+attribute = student.get_attribute("ime")
 
 result = estimate_selection(
     student,
