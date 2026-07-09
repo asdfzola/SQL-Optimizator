@@ -53,6 +53,12 @@ class Condition:
     operator: str
     right: str
 
+    def is_join(self):
+        return "." in self.left and "." in self.right
+
+    def is_selection(self):
+        return not self.is_join()
+
 
 @dataclass
 class Query:
