@@ -1,6 +1,7 @@
-# from statistics import load_schema
-#
-# schema = load_schema("schema/schema.json")
+from statistics import load_schema
+from estimator import estimate_selection
+
+schema = load_schema("schema/schema.json")
 #
 # print("Buffer:", schema.buffer_blocks)
 # print()
@@ -55,13 +56,30 @@
 #
 # print("\nORDER BY:", query.order_by)
 
-from algorithms import *
+# from algorithms import *
+#
+#
+# print(selection_full_scan(100))
+#
+# print(btree_equality(3, True))
+#
+# print(hash_equality())
+#
+# print(btree_range(3,100,10))
 
+student = schema.tables["Student"]
 
-print(full_scan(100))
+attribute = student.get_attribute("smer")
 
-print(btree_equality(3, True))
+result = estimate_selection(
+    student,
+    attribute,
+    "="
+)
 
-print(hash_equality())
+print(result.output_rows)
 
-print(btree_range(3,100))
+print(result.output_blocks)
+
+for alg in result.estimates:
+    print(alg.algorithm, alg.cost)

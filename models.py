@@ -76,3 +76,24 @@ class PlanStep:
 class ExecutionPlan:
     steps: list[PlanStep]
     total_cost: float
+
+
+@dataclass
+class EstimateResult:
+    output_rows: int
+    output_blocks: int
+    algorithm: str
+    cost: float
+
+
+@dataclass
+class AlgorithmEstimate:
+    algorithm: str
+    cost: float
+
+
+@dataclass
+class SelectionEstimate:
+    output_rows: int
+    output_blocks: int
+    estimates: list[AlgorithmEstimate]

@@ -5,7 +5,7 @@ import math
 # SELECTION
 # _________________________________
 
-def full_scan(blocks):
+def selection_full_scan(blocks):
     return blocks
 
 
