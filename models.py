@@ -45,6 +45,11 @@ class Schema:
     buffer_blocks: int
     tables: dict[str, Table]
 
+    def get_table(self, name: str):
+        return self.tables[name]
+
+
+
 
 # modeli za sql upit:
 @dataclass
@@ -103,3 +108,19 @@ class SelectionEstimate:
     output_rows: int
     output_blocks: int
     estimates: list[AlgorithmEstimate]
+
+
+@dataclass
+class JoinEstimate:
+    output_rows: int
+    output_blocks: int
+    estimates: list[AlgorithmEstimate]
+
+
+@dataclass
+class PlanNode:
+    operation: str
+    algorithm: str
+    cost: float
+    children: list
+    details: str = ""

@@ -1,5 +1,7 @@
-from statistics import load_schema
-from estimator import estimate_selection
+from parser import parse_query
+from statistics import *
+from estimator import *
+from optimizer import optimize_query
 
 schema = load_schema("schema/schema.json")
 #
@@ -67,19 +69,81 @@ schema = load_schema("schema/schema.json")
 #
 # print(btree_range(3,100,10))
 
-student = schema.tables["Student"]
+# student = schema.tables["Student"]
+#
+# attribute = student.get_attribute("ime")
+#
+# result = estimate_selection(
+#     student,
+#     attribute,
+#     "="
+# )
+#
+# print(result.output_rows)
+#
+# print(result.output_blocks)
+#
+# for alg in result.estimates:
+#     print(alg.algorithm, alg.cost)
 
-attribute = student.get_attribute("ime")
+# student = schema.tables["Student"]
+#
+# ispit = schema.tables["Ispit"]
+#
+#
+# student_indeks = (
+#     student.get_attribute("indeks")
+# )
+#
+#
+# ispit_student = (
+#     ispit.get_attribute("studentIndeks")
+# )
+#
+#
+# result = estimate_join(
+#     student,
+#     student_indeks,
+#     ispit,
+#     ispit_student,
+#     schema.buffer_blocks
+# )
+#
+#
+#
+# print("\n========== JOIN ==========")
+#
+# print(
+#     "Output rows:",
+#     result.output_rows
+# )
+#
+# print(
+#     "Output blocks:",
+#     result.output_blocks
+# )
+#
+#
+# for e in result.estimates:
+#
+#     print(
+#         e.algorithm,
+#         "->",
+#         e.cost
+#     )
 
-result = estimate_selection(
-    student,
-    attribute,
-    "="
+
+
+sql = """
+SELECT *
+FROM Student, Ispit
+WHERE Student.indeks = Ispit.studentIndeks and Student.ime = 'Pera'
+"""
+query = parse_query(sql)
+
+plan = optimize_query(
+    query,
+    schema
 )
 
-print(result.output_rows)
-
-print(result.output_blocks)
-
-for alg in result.estimates:
-    print(alg.algorithm, alg.cost)
+print(plan)

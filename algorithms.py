@@ -71,7 +71,7 @@ def projection_with_duplicates(blocks, sort_cost):
 # SORT
 # ------------------------------
 
-def external_merge_sort(br, bb, m):
+def external_merge_sort(br, m):
     if br <= m:
         return 2 * br
 

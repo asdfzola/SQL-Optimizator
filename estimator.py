@@ -79,3 +79,82 @@ def estimate_selection(table, attribute, operator):
         output_blocks=blocks,
         estimates=estimates
     )
+
+
+def estimate_join(left_table, left_attribute, right_table, right_attribute, buffer_blocks):
+    output_rows = math.ceil(
+        (left_table.row_count * right_table.row_count) / max(left_attribute.distinct_values,
+                                                             right_attribute.distinct_values))
+
+    output_blocks = output_rows / min(left_table.rows_per_block, right_table.rows_per_block)
+
+    estimates = []
+
+    # Nested loop Join
+    cost = nested_loop_join(
+        left_table.block_count,
+        left_table.row_count,
+        right_table.block_count
+    )
+
+    estimates.append(AlgorithmEstimate("Nested Loop Join", cost))
+
+    # Block Nested Loop Join
+    cost = block_nested_loop_join(
+        left_table.block_count,
+        right_table.block_count,
+        buffer_blocks
+    )
+
+    estimates.append(AlgorithmEstimate("Block Nested Loop Join", cost))
+
+    # Hash Join
+    cost = hash_join(
+        left_table.block_count,
+        right_table.block_count
+    )
+
+    estimates.append(AlgorithmEstimate("Hash Join", cost))
+
+    # Merge Join
+    left_sort = external_merge_sort(
+        left_table.block_count,
+        buffer_blocks
+    )
+    right_sort = external_merge_sort(
+        right_table.block_count,
+        buffer_blocks
+    )
+
+    cost = merged_join(
+        left_table.block_count,
+        right_table.block_count,
+        sorted=False,
+        sort_cost=left_sort + right_sort
+    )
+
+    estimates.append(AlgorithmEstimate("Merge Join", cost))
+
+    # Index Nested Loop Join
+    # optimizer ce da proba da li index postoji u unutrasnjoj relaciji
+    for index in right_table.indexes:
+        if right_attribute.name not in index.attributes: continue
+        if index.index_type != "B_PLUS_TREE": continue
+
+        matching_rows = math.ceil(right_table.row_count / right_attribute.distinct_values)
+
+        cost = index_nested_loop_join(
+            left_table.block_count,
+            left_table.row_count,
+            index.tree_height,
+            index.clustered,
+            matching_rows
+        )
+
+        estimates.append(AlgorithmEstimate("Index Nested Loop Join", cost))
+
+    return JoinEstimate(
+        output_rows=output_rows,
+        output_blocks=output_blocks,
+        estimates=estimates
+    )
