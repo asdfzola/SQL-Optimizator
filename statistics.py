@@ -10,7 +10,7 @@ def load_schema(file_path: str) -> Schema:
         data = json.load(f)
 
     print("Number of tables in JSON:",
-          len(data["schema"]["tables"]))
+          len(data["schema"]["tables"]), "\n")
 
     buffer_blocks = data["bufferBlocks"]
     tables = {}

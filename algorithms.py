@@ -11,13 +11,17 @@ def selection_full_scan(blocks):
 
 def btree_equality(height, clustered, data_blocks=1):
     if clustered:
-        return height + 1  # sortiran u memoriji
+        return height + 1 # sortiran u memoriji
     else:
         return height + 1 + data_blocks  # nije sortiran na disku, pa ce cost biti veci
 
 
-def hash_equality():
-    return 2
+def hash_equality(output_rows, clustered=False):
+    if clustered:
+        return 1 + math.ceil(output_rows / 10)
+
+    else:
+        return 1 + output_rows
 
 
 def btree_range(height, leaf_blocks, blocks):
@@ -60,7 +64,8 @@ def hash_join(br, bs):
     return 3 * (br + bs)
 
 
-def projection(blocks): return blocks
+def projection(blocks):
+    return blocks
 
 
 def projection_with_duplicates(blocks, sort_cost):

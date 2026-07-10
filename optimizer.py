@@ -1,3 +1,4 @@
+import math
 from models import *
 from estimator import *
 
@@ -22,13 +23,26 @@ def optimize_selection(table, condition, child_plan=None):
 
     best = min(estimate.estimates, key=lambda x: x.cost)
 
+    children = []
+
+    if best.algorithm == "Full Scan":
+        return PlanNode(
+            operation="SELECTION",
+            algorithm="Full Scan",
+            cost=best.cost,
+            output_rows=estimate.output_rows,
+            output_blocks=estimate.output_blocks,
+            children=children,
+            details=(condition.left + condition.operator + condition.right)
+        )
+
     return PlanNode(
         operation="SELECTION",
         algorithm=best.algorithm,
         cost=best.cost,
         output_rows=estimate.output_rows,
         output_blocks=estimate.output_blocks,
-        children=[] if child_plan is None else [child_plan],
+        children=children,
         details=(condition.left + condition.operator + condition.right)
     )
 
@@ -46,6 +60,78 @@ def optimize_join(left_plan, right_plan, left_table, left_attr, right_table, rig
         output_blocks=estimate.output_blocks,
         children=[left_plan, right_plan],
         details=(left_table.name + "." + left_attr.name + "=" + right_table.name + "." + right_attr.name)
+    )
+
+
+def optimize_projection(plan, select_attributes, input_blocks=None):
+    # Ako je rezultat već mali (npr. indeksna selekcija),
+    # projekcija se radi tokom vraćanja rezultata
+    if input_blocks is not None and plan.output_blocks < input_blocks:
+        cost = plan.output_blocks
+    else:
+        cost = 0
+
+    return PlanNode(
+        operation="PROJECTION",
+        algorithm="Projection",
+        cost=cost,
+        output_rows=plan.output_rows,
+        output_blocks=plan.output_blocks,
+        children=[plan],
+        details=", ".join(select_attributes)
+    )
+
+
+# def optimize_projection(plan, select_attributes, table):
+#     if plan.operation == "SCAN":
+#         return PlanNode(
+#             operation="PROJECTION",
+#             algorithm="Projection",
+#             cost=0,
+#             output_rows=plan.output_rows,
+#             output_blocks=plan.output_blocks,
+#             children=[plan],
+#             details=", ".join(select_attributes)
+#         )
+#
+#     old_attribute_count = len(table.attributes)
+#     new_attribute_count = len(select_attributes)
+#
+#     # procena smanjenja veličine reda
+#     ratio = new_attribute_count / old_attribute_count
+#
+#     output_blocks = max(
+#         1,
+#         math.ceil(plan.output_blocks * ratio)
+#     )
+#
+#     cost = output_blocks
+#
+#     return PlanNode(
+#         operation="PROJECTION",
+#         algorithm="Projection",
+#         cost=cost,
+#         output_rows=plan.output_rows,
+#         output_blocks=output_blocks,
+#         children=[plan],
+#         details=", ".join(select_attributes)
+#     )
+
+
+def optimize_order_by(plan, attribute, buffer_blocks):
+    cost = external_merge_sort(
+        plan.output_blocks,
+        buffer_blocks
+    )
+
+    return PlanNode(
+        operation="SORT",
+        algorithm="External Merge Sort",
+        cost=cost,
+        output_rows=plan.output_rows,
+        output_blocks=plan.output_blocks,
+        children=[plan],
+        details=attribute
     )
 
 
@@ -102,15 +188,18 @@ def optimize_query(query, schema):
 
         table_conditions = [
             c for c in selection_conditions
-            if c.left.split(".")[0] == table.name
+            if "." not in c.left or c.left.split(".")[0] == table.name
         ]
 
         plan = apply_selections(table, table_conditions)
         # apply_selections radi optimize_selections()
+        plan = optimize_projection(plan, query.select, table.block_count)
 
         # ORDER BY se dodaje ovde
+        if query.order_by:
+            plan = optimize_order_by(plan, query.order_by, schema.buffer_blocks)
 
-        return plan
+        return create_execution_plan(plan)
 
     # ako postoje 2 tabele
 

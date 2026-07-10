@@ -135,9 +135,7 @@ schema = load_schema("schema/schema.json")
 
 
 sql = """
-SELECT *
-FROM Student, Ispit
-WHERE Student.indeks = Ispit.studentIndeks and Student.ime = 'Pera'
+SELECT ime, smer FROM Student ORDER BY indeks
 """
 query = parse_query(sql)
 
@@ -148,4 +146,4 @@ plan = optimize_query(
 
 print_plan(plan.root)
 print()
-print("TOTAL COST = ", plan.total_cost )
+print("TOTAL COST =", plan.total_cost)

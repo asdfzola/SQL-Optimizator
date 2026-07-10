@@ -61,7 +61,7 @@ def estimate_selection(table, attribute, operator):
 
         if index.index_type == "HASH" and operator == "=":
             estimates.append(
-                AlgorithmEstimate("Hash Index", hash_equality())
+                AlgorithmEstimate("Hash Index", hash_equality(rows, index.clustered))
             )
 
         if index.index_type == "B_PLUS_TREE":
