@@ -81,10 +81,18 @@ class PlanStep:
     cost: float
     output_rows: int
 
-
+@dataclass
+class PlanNode:
+    operation: str
+    algorithm: str
+    cost: float
+    output_rows: int
+    output_blocks: int
+    children: list
+    details: str = ""
 @dataclass
 class ExecutionPlan:
-    steps: list[PlanStep]
+    root: PlanNode
     total_cost: float
 
 
@@ -116,14 +124,6 @@ class JoinEstimate:
     estimates: list[AlgorithmEstimate]
 
 
-@dataclass
-class PlanNode:
-    operation: str
-    algorithm: str
-    cost: float
-    output_rows: int
-    output_blocks: int
-    children: list
-    details: str = ""
+
 
 

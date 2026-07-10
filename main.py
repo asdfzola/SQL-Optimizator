@@ -1,7 +1,7 @@
 from parser import parse_query
 from statistics import *
 from estimator import *
-from optimizer import optimize_query
+from optimizer import optimize_query, print_plan
 
 schema = load_schema("schema/schema.json")
 #
@@ -135,9 +135,9 @@ schema = load_schema("schema/schema.json")
 
 
 sql = """
-SELECT Student.ime
+SELECT *
 FROM Student, Ispit
-WHERE Student.indeks = Ispit.studentIndeks
+WHERE Student.indeks = Ispit.studentIndeks and Student.ime = 'Pera'
 """
 query = parse_query(sql)
 
@@ -146,4 +146,6 @@ plan = optimize_query(
     schema
 )
 
-print(plan)
+print_plan(plan.root)
+print()
+print("TOTAL COST = ", plan.total_cost)

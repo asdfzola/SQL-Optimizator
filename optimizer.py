@@ -69,6 +69,22 @@ def apply_selections(table, conditions):
     return plan
 
 
+def calculate_total_cost(node):
+    total = node.cost
+
+    for child in node.children:
+        total += calculate_total_cost(child)
+
+    return total
+
+
+def create_execution_plan(root):
+    return ExecutionPlan(
+        root=root,
+        total_cost=calculate_total_cost(root)
+    )
+
+
 def optimize_query(query, schema):
     tables = []
     # uzimamo prvo sve tabele koje se pojavljuju u upitu
@@ -90,6 +106,7 @@ def optimize_query(query, schema):
         ]
 
         plan = apply_selections(table, table_conditions)
+        # apply_selections radi optimize_selections()
 
         # ORDER BY se dodaje ovde
 
@@ -136,5 +153,23 @@ def optimize_query(query, schema):
         join_plan = optimize_join(left_plan, right_plan, left_table, left_attribute, right_table, right_attribute,
                                   schema.buffer_blocks)
 
-        return join_plan
+        return create_execution_plan(join_plan)
     # ovde nastavljamo za 3 i vise tabela...
+
+
+def print_plan(node, level=0):
+    indent = "  " * level
+    print(
+        indent +
+        f"{node.operation} "
+        f"[{node.algorithm}] "
+        f"cost={node.cost}, "
+        f"rows={node.output_rows}, "
+        f"blocks={node.output_blocks}"
+    )
+
+    if node.details:
+        print(indent + f"  ->{node.details}")
+
+    for child in node.children:
+        print_plan(child, level + 1)
