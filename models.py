@@ -50,7 +50,6 @@ class Schema:
 
 
 
-
 # modeli za sql upit:
 @dataclass
 class Condition:
@@ -122,5 +121,9 @@ class PlanNode:
     operation: str
     algorithm: str
     cost: float
+    output_rows: int
+    output_blocks: int
     children: list
     details: str = ""
+
+

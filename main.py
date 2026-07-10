@@ -135,9 +135,9 @@ schema = load_schema("schema/schema.json")
 
 
 sql = """
-SELECT *
+SELECT Student.ime
 FROM Student, Ispit
-WHERE Student.indeks = Ispit.studentIndeks and Student.ime = 'Pera'
+WHERE Student.indeks = Ispit.studentIndeks
 """
 query = parse_query(sql)
 
