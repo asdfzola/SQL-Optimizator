@@ -148,4 +148,4 @@ plan = optimize_query(
 
 print_plan(plan.root)
 print()
-print("TOTAL COST = ", plan.total_cost)
+print("TOTAL COST = ", plan.total_cost )
