@@ -188,7 +188,7 @@ def optimize_multiple_selections(table, conditions):
     )
 
 
-def optimize_order_by(plan,table, attribute, buffer_blocks):
+def optimize_order_by(plan, table, attribute, buffer_blocks):
     from algorithms import external_merge_sort
 
     # Proveri da li postoji clustered B+ tree indeks
@@ -558,8 +558,26 @@ def optimize_query(query, schema):
 
     # ORDER BY
     if query.order_by:
-        root = optimize_order_by(root, query.order_by, schema.buffer_blocks)
+        # Kod JOIN-a ORDER BY atribut može pripadati bilo kojoj
+        # tabeli iz FROM klauzule.
+        order_by_attribute = resolve_attribute_name(query.order_by)
+        order_by_table_name = resolve_table_name(
+            query,
+            schema,
+            query.order_by
+        )
 
+        order_by_table = _find_table_by_name(
+            schema,
+            order_by_table_name
+        )
+
+        root = optimize_order_by(
+            root,
+            order_by_table,
+            order_by_attribute,
+            schema.buffer_blocks
+        )
     return _make_execution_plan(root)
 
 
