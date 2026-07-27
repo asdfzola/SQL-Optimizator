@@ -135,7 +135,8 @@ schema = load_schema("schema/schema.json")
 
 
 sql = """
-SELECT ime, smer FROM Student ORDER BY indeks
+SELECT ime FROM Student WHERE smer = 'SIIT' AND prosek >= 9.0
+
 """
 query = parse_query(sql)
 
