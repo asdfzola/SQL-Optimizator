@@ -166,7 +166,8 @@ def main():
         "SELECT ispitId, ocena FROM Ispit WHERE ocena = 10",
         "SELECT ime, smer FROM Student ORDER BY indeks",
         "SELECT ime FROM Student WHERE smer = 'SIIT' AND prosek >= 9.0",
-        "SELECT datum FROM Ispit WHERE predmetId = 5 AND ocena = 9"
+        "SELECT datum FROM Ispit WHERE predmetId = 5 AND ocena = 9",
+        "SELECT s.ime, s.smer, p.naziv, st.tip FROM Student s, Ispit i, Predmet p, Stipendija st WHERE s.indeks = i.studentIndeks AND i.predmetId = p.predmetId AND s.indeks = st.studentIndeks AND s.godinaUpisa >= 2020 AND i.ocena >= 7 AND st.iznos <= 15000"
     ]
 
     for i, sql in enumerate(queries, start=1):

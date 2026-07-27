@@ -188,10 +188,35 @@ def optimize_multiple_selections(table, conditions):
     )
 
 
-def optimize_order_by(plan, attribute, buffer_blocks):
+def optimize_order_by(plan,table, attribute, buffer_blocks):
     from algorithms import external_merge_sort
 
-    cost = external_merge_sort(plan.output_blocks, buffer_blocks)
+    # Proveri da li postoji clustered B+ tree indeks
+    for index in table.indexes:
+        if (
+                index.index_type == "B_PLUS_TREE"
+                and index.clustered
+                and index.attributes
+                and index.attributes[0].lower() == attribute.lower()
+        ):
+            cost = index.tree_height + table.block_count
+
+            return PlanNode(
+                operation="SORT",
+                algorithm="Clustered B+ Tree Scan",
+                cost=cost,
+                output_rows=plan.output_rows,
+                output_blocks=plan.output_blocks,
+                children=[plan],
+                details=attribute
+            )
+
+    # Ako nema odgovarajućeg clustered indeksa,
+    # radi se external merge sort
+    cost = external_merge_sort(
+        plan.output_blocks,
+        buffer_blocks
+    )
 
     return PlanNode(
         operation="SORT",
@@ -464,7 +489,15 @@ def optimize_query(query, schema):
 
         # ORDER BY
         if query.order_by:
-            root = optimize_order_by(root, query.order_by, schema.buffer_blocks)
+            table = _find_table_by_name(schema, query.from_tables[0])
+            attribute_name = resolve_attribute_name(query.order_by)
+
+            root = optimize_order_by(
+                root,
+                table,
+                attribute_name,
+                schema.buffer_blocks
+            )
 
         return _make_execution_plan(root)
 
