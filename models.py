@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass, field
 
 
@@ -50,42 +49,75 @@ class Schema:
         return self.tables[name]
 
 
+
 # modeli za sql upit:
+
+_FLIPPED_OPERATOR = {
+    "=": "=",
+    "!=": "!=",
+    "<": ">",
+    ">": "<",
+    "<=": ">=",
+    ">=": "<=",
+}
+
+
 @dataclass
 class Condition:
     left: str
     operator: str
     right: str
 
-    def is_join(self) -> bool:
+    @staticmethod
+    def _is_literal(value: str) -> bool:
+        """Da li je vrednost brojevni ili string literal (a ne referenca na atribut)."""
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            return True
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+
+    def _is_reference(self, value: str, table_aliases: dict[str, str] | None = None) -> bool:
+        value = value.strip()
+        if "." not in value:
+            return False
+        if self._is_literal(value):
+            return False
+        if table_aliases is not None:
+            prefix = value.split(".", 1)[0]
+            return prefix in table_aliases
+        return True
+
+    def is_join(self, table_aliases: dict[str, str] | None = None) -> bool:
         """
-        JOIN je kada su obe strane reference na atribute.
-
-        Primer:
-            S.id = I.id
-
-        Nije JOIN:
-            S.ocena > 9.5
-            S.ime = 'Pera'
+        Uslov je JOIN samo ako su OBE strane prave table.atribut reference
+        (ne brojevni/string literal koji slucajno sadrzi tacku, npr. '1000.50').
+        Ako je dostupna table_aliases mapa (iz Query), dodatno se proverava
+        da prefiks pre tacke zaista jeste poznat alias.
         """
+        return self._is_reference(self.left, table_aliases) and self._is_reference(self.right, table_aliases)
 
-        def is_attribute_reference(value: str) -> bool:
-            value = value.strip()
+    def is_selection(self, table_aliases: dict[str, str] | None = None) -> bool:
+        return not self.is_join(table_aliases)
 
-            return bool(
-                re.fullmatch(
-                    r"[A-Za-z_]\w*\.[A-Za-z_]\w*",
-                    value
-                )
-            )
+    def normalized(self, table_aliases: dict[str, str] | None = None) -> "Condition":
+        """
+        Za SELEKCIONE uslove: vraca uslov kod koga je atributska referenca
+        UVEK na levoj strani (npr. '5 = R.ocena' -> 'R.ocena = 5',
+        '5 < R.plata' -> 'R.plata > 5'). Operator se obrne kad se strane zamene.
+        Join uslovi i uslovi koji vec imaju referencu levo ostaju nepromenjeni.
+        """
+        left_is_ref = self._is_reference(self.left, table_aliases)
+        right_is_ref = self._is_reference(self.right, table_aliases)
 
-        return (
-            is_attribute_reference(self.left)
-            and
-            is_attribute_reference(self.right)
-        )
-    def is_selection(self):
-        return not self.is_join()
+        if left_is_ref or not right_is_ref:
+            return self
+
+        flipped_operator = _FLIPPED_OPERATOR.get(self.operator, self.operator)
+        return Condition(left=self.right, operator=flipped_operator, right=self.left)
 
 
 @dataclass
@@ -94,10 +126,17 @@ class Query:
     from_tables: list[str]
     where: list[Condition]
     order_by: str | None
-    table_aliases: dict[str, str] = field(default_factory=dict)
+    table_aliases: dict[str, str] = field(default_factory=dict)  # alias -> pravo ime tabele
 
 
 # Modeli za izvrsni plan
+
+@dataclass
+class PlanStep:
+    operation: str
+    algorithm: str
+    cost: float
+    output_rows: int
 
 @dataclass
 class PlanNode:
@@ -108,9 +147,6 @@ class PlanNode:
     output_blocks: int
     children: list
     details: str = ""
-    materialization_cost: float = 0
-
-
 @dataclass
 class ExecutionPlan:
     root: PlanNode
@@ -143,3 +179,8 @@ class JoinEstimate:
     output_rows: int
     output_blocks: int
     estimates: list[AlgorithmEstimate]
+
+
+
+
+

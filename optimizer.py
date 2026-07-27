@@ -95,44 +95,24 @@ def resolve_table_name(query, schema, reference):
 def split_conditions(query):
     """
     Razdvaja WHERE uslove na:
-        - selection
+        - selection (normalizovani tako da je atributska referenca UVEK levo,
+          npr. '5 = R.ocena' postaje 'R.ocena = 5' - vidi Condition.normalized())
         - join
     """
     selection_conditions = []
     join_conditions = []
 
     for condition in query.where:
-        if condition.is_join():
+        if condition.is_join(query.table_aliases):
             join_conditions.append(condition)
         else:
-            selection_conditions.append(condition)
+            selection_conditions.append(condition.normalized(query.table_aliases))
 
     return selection_conditions, join_conditions
 
 
 def _condition_table_name(query, schema, condition_side):
     return resolve_table_name(query, schema, condition_side)
-
-
-def _condition_selectivity(table, attribute, operator):
-    """
-    Koristi se samo za procenu broja redova/blokova
-    kada imamo vise selection uslova nad istom tabelom.
-    """
-    if operator == "=":
-        if attribute.unique:
-            return 1 / table.row_count
-        return 1 / attribute.distinct_values
-
-    if operator in ("<", ">", "<=", ">="):
-        return 0.5
-
-    if operator == "!=":
-        if attribute.unique:
-            return (table.row_count - 1) / table.row_count
-        return (attribute.distinct_values - 1) / attribute.distinct_values
-
-    raise ValueError(f"Nepoznat operator: {operator}")
 
 
 def _condition_to_text(condition):
@@ -155,10 +135,11 @@ def create_scan_plan(table):
     )
 
 
-def optimize_selection(table, condition):
+def optimize_selection(table, condition, table_aliases=None):
     """
     Bira najbolji access path za jednu selection logicku operaciju.
     """
+    condition = condition.normalized(table_aliases)
     attribute_name = resolve_attribute_name(condition.left)
     attribute = _find_attribute_case_insensitive(table, attribute_name)
 
@@ -234,35 +215,7 @@ def _build_selection_plan_for_table(query, schema, table, conditions):
     if not conditions:
         return create_scan_plan(table)
 
-    # Izracunaj combined selectivity za sve uslove nad ovom tabelom
-    total_selectivity = 1.0
-    for condition in conditions:
-        attr_name = resolve_attribute_name(condition.left)
-        attr = _find_attribute_case_insensitive(table, attr_name)
-        if attr is None:
-            continue
-        total_selectivity *= _condition_selectivity(table, attr, condition.operator)
-
-    output_rows = max(1, int(round(table.row_count * total_selectivity + 0.0000001)))
-    output_blocks = max(1, (output_rows + table.rows_per_block - 1) // table.rows_per_block)
-
-    # Izaberi najbolji algoritam medju svim individualnim uslovima
-    best_plan = None
-    for condition in conditions:
-        candidate = optimize_selection(table, condition)
-        if best_plan is None or candidate.cost < best_plan.cost:
-            best_plan = candidate
-
-    # Zadrzimo najbolji algoritam, ali rezultat je za sve uslove zajedno
-    return PlanNode(
-        operation="SELECTION",
-        algorithm=best_plan.algorithm,
-        cost=best_plan.cost,
-        output_rows=output_rows,
-        output_blocks=output_blocks,
-        children=[],
-        details=" AND ".join(_condition_to_text(c) for c in conditions)
-    )
+    return optimize_multiple_selections(table, conditions)
 
 
 def _calculate_total_cost(node):

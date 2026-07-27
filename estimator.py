@@ -11,6 +11,7 @@ from algorithms import (
     block_nested_loop_join,
     index_nested_loop_join,
     merge_join,
+    merge_join_sorted,
     hash_join,
 )
 from models import AlgorithmEstimate, SelectionEstimate, JoinEstimate
@@ -49,6 +50,14 @@ def estimate_blocks(table, output_rows):
     return max(1, math.ceil(output_rows / table.rows_per_block))
 
 
+def is_sorted_on_attribute(table, attribute_name):
+    """Da li je tabela vec fizicki sortirana po ovom atributu (clustered indeks nad njim)."""
+    return any(
+        index.clustered
+        for index in table.get_index_for_attribute(attribute_name)
+    )
+
+
 def estimate_selection_result(table, attribute, operator):
     if operator == "=":
         rows = estimate_rows(table, equality_selectivity(attribute, table))
@@ -71,13 +80,27 @@ def calculate_index_lookup_cost_for_selection(table, attribute, operator):
     """
     Vraća najmanju cenu pristupa preko indeksa za dati atribut.
     Koristi se samo ako atribut odgovara PRVOM atributu indeksa.
+
+    NAPOMENA: ova funkcija trenutno nije pozvana nigde u kodu -
+    estimate_selection racuna istu stvar inline. Ako je ne koristis
+    negde drugde, slobodno je obrisi; ostavljena je (i ispravljena)
+    za slucaj da je pozivas iz testova ili planiras da je iskoristis.
     """
     best_cost = None
 
-    matching_rows = max(
-        1,
-        math.ceil(table.row_count / attribute.distinct_values)
-    )
+    if operator == "=":
+        matching_rows = max(
+            1,
+            math.ceil(table.row_count / attribute.distinct_values)
+        )
+    elif operator in ("<", ">", "<=", ">="):
+        matching_rows = max(1, math.ceil(table.row_count * range_selectivity()))
+    else:  # !=
+        matching_rows = max(
+            1,
+            math.ceil(table.row_count * (attribute.distinct_values - 1) / attribute.distinct_values)
+        )
+
     matching_blocks = max(
         1,
         math.ceil(matching_rows / table.rows_per_block)
@@ -240,6 +263,10 @@ def estimate_multiple_selections(table, conditions):
 
     Primer:
         predmetId = 5 AND ocena = 9
+
+    NAPOMENA: pretpostavlja da je condition.left UVEK atributska referenca
+    (npr. 'predmetId', ne '5'). optimizer.split_conditions() ovo garantuje
+    pozivom condition.normalized() pre nego sto uslovi stignu ovde.
     """
 
     if not conditions:
@@ -538,28 +565,31 @@ def calculate_index_lookup_cost_for_join(table, attribute, operator):
                 continue
 
             if operator == "=":
-                if attribute.unique:
-                    cost = index.tree_height + 1
-                elif index.clustered:
-                    cost = index.tree_height + matching_blocks
-                else:
-                    cost = index.tree_height + matching_rows
+                cost = btree_equality(
+                    height=index.tree_height,
+                    clustered=index.clustered,
+                    output_rows=matching_rows,
+                    output_blocks=matching_blocks,
+                    unique=attribute.unique,
+                )
             else:
-                if index.clustered:
-                    cost = index.tree_height + matching_blocks
-                else:
-                    cost = index.tree_height + matching_rows
+                cost = btree_range(
+                    height=index.tree_height,
+                    clustered=index.clustered,
+                    output_rows=matching_rows,
+                    output_blocks=matching_blocks,
+                )
 
         elif index.index_type == "HASH":
             if operator != "=":
                 continue
 
-            if attribute.unique:
-                cost = 1.2
-            elif index.clustered:
-                cost = 1.2 + matching_blocks
-            else:
-                cost = 1.2 + matching_rows
+            cost = hash_equality(
+                output_rows=matching_rows,
+                output_blocks=matching_blocks,
+                clustered=index.clustered,
+                unique=attribute.unique,
+            )
 
         else:
             continue
@@ -653,15 +683,21 @@ def estimate_join(
     # MERGE JOIN
     # --------------------------------------------------------
     if operator == "=":
-        left_sort_cost = external_merge_sort(left_blocks, buffer_blocks)
-        right_sort_cost = external_merge_sort(right_blocks, buffer_blocks)
+        left_sorted = is_sorted_on_attribute(left_table, left_attribute.name)
+        right_sorted = is_sorted_on_attribute(right_table, right_attribute.name)
 
-        cost = merge_join(
-            left_blocks,
-            right_blocks,
-            left_sort_cost,
-            right_sort_cost
-        )
+        if left_sorted and right_sorted:
+            cost = merge_join_sorted(left_blocks, right_blocks)
+        else:
+            left_sort_cost = 0 if left_sorted else external_merge_sort(left_blocks, buffer_blocks)
+            right_sort_cost = 0 if right_sorted else external_merge_sort(right_blocks, buffer_blocks)
+
+            cost = merge_join(
+                left_blocks,
+                right_blocks,
+                left_sort_cost,
+                right_sort_cost
+            )
 
         estimates.append(
             AlgorithmEstimate(

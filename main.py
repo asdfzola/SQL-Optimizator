@@ -4,6 +4,8 @@ from estimator import *
 from optimizer import optimize_query, print_plan
 
 schema = load_schema("schema/schema.json")
+
+
 #
 # print("Buffer:", schema.buffer_blocks)
 # print()
@@ -133,18 +135,66 @@ schema = load_schema("schema/schema.json")
 #     )
 
 
+# sql = """
+# SELECT datum FROM Ispit WHERE predmetId = 5 AND ocena = 9
+# """
+# query = parse_query(sql)
+#
+# plan = optimize_query(
+#     query,
+#     schema
+# )
+#
+# print_plan(plan.root)
+# print()
+# print("TOTAL COST =", plan.total_cost)
 
-sql = """
-SELECT ime FROM Student WHERE smer = 'SIIT' AND prosek >= 9.0
+def parse_sql(sql):
+    from parser import parse_query
 
-"""
-query = parse_query(sql)
+    return parse_query(sql)
+def main():
 
-plan = optimize_query(
-    query,
-    schema
-)
 
-print_plan(plan.root)
-print()
-print("TOTAL COST =", plan.total_cost)
+    queries = [
+        "SELECT ime FROM Student",
+        "SELECT ime, prosek FROM Student WHERE indeks = 'RA-42-2021",
+        "SELECT naziv, espb FROM Predmet WHERE espb >= 6",
+        "SELECT ime, smer FROM Student WHERE ime = 'Ana'",
+        "SELECT naziv FROM Predmet WHERE katedra = 'Matematika'",
+        "SELECT tip, iznos FROM Stipendija WHERE tip = 'drzavna'",
+        "SELECT ispitId, ocena FROM Ispit WHERE ocena = 10",
+        "SELECT ime, smer FROM Student ORDER BY indeks",
+        "SELECT ime FROM Student WHERE smer = 'SIIT' AND prosek >= 9.0",
+        "SELECT datum FROM Ispit WHERE predmetId = 5 AND ocena = 9"
+    ]
+
+    for i, sql in enumerate(queries, start=1):
+
+        print("\n" + "=" * 70)
+        print(f"UPIT {i}")
+        print("=" * 70)
+
+        print(sql)
+        print()
+
+        try:
+            query = parse_sql(sql)
+
+            plan = optimize_query(
+                query,
+                schema
+            )
+
+            # Ceo plan
+            print_plan(plan.root)
+
+            print()
+            print(f"TOTAL COST = {plan.total_cost}")
+
+        except Exception as e:
+            print(f"GRESKA: {e}")
+
+
+if __name__ == "__main__":
+    main()

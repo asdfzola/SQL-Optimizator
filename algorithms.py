@@ -34,13 +34,20 @@ def btree_range(height, clustered, output_rows, output_blocks):
 
 
 def hash_equality(output_rows, output_blocks, clustered, unique=False):
+    """
+    ~1.2 predstavlja prosecnu cenu pristupa hash kanti (obicno 1 I/O,
+    povremeno vise zbog overflow lanaca). Dodaje se u SVIM slucajevima,
+    ne samo za unique - u prethodnoj verziji je nedostajala za
+    ne-jedinstvene atribute, sto je bilo nedosledno sa formulom
+    koju calculate_index_lookup_cost_for_join vec koristi za JOIN.
+    """
     if unique:
         return 1.2
 
     if clustered:
-        return output_blocks
+        return 1.2 + output_blocks
 
-    return output_rows
+    return 1.2 + output_rows
 
 
 # __________________________________
@@ -109,7 +116,7 @@ def external_merge_sort(br, m):
 
     # formula sa interneta
     initial_runs = math.ceil(br / m)
-    merge_in = br - 1
+    merge_in = m - 1
     passes = 0
 
     for _ in range(10 ** 9):
