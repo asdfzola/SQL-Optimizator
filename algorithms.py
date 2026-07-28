@@ -42,12 +42,12 @@ def hash_equality(output_rows, output_blocks, clustered, unique=False):
     koju calculate_index_lookup_cost_for_join vec koristi za JOIN.
     """
     if unique:
-        return 1.2
+        return 1
 
     if clustered:
-        return 1.2 + output_blocks
+        return 1 + output_blocks
 
-    return 1.2 + output_rows
+    return 1 + output_rows
 
 
 # __________________________________
